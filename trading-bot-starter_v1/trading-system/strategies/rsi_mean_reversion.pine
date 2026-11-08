@@ -1,0 +1,41 @@
+//@version=6
+// RSI(2) Mean Reversion — starter strategy for the webhook bot.
+// Paste into TradingView's Pine Editor, click "Add to chart".
+//
+// How it works: buys when the 2-period RSI is extremely oversold while
+// price is above the 200-day MA (uptrend filter), exits when RSI is
+// overbought. Each entry/exit carries an alert_message in JSON — that's
+// what your webhook server receives.
+
+strategy("RSI(2) Mean Reversion",
+     overlay=true,
+     initial_capital=100000,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=10,
+     commission_type=strategy.commission.percent,
+     commission_value=0.01,   // be honest with yourself about costs
+     slippage=2)
+
+rsiLen     = input.int(2, "RSI Length", minval=1)
+oversold   = input.int(10, "Oversold Level", minval=1, maxval=40)
+overbought = input.int(90, "Overbought Level", minval=60, maxval=99)
+maLen      = input.int(200, "Trend MA Length", minval=20)
+
+rsi = ta.rsi(close, rsiLen)
+ma  = ta.sma(close, maLen)
+
+longCondition = rsi < oversold and close > ma
+exitCondition = rsi > overbought
+
+if longCondition
+    strategy.entry("Long", strategy.long,
+         alert_message='{"action":"buy","ticker":"{{ticker}}","price":{{close}}}')
+
+if exitCondition
+    strategy.close("Long",
+         alert_message='{"action":"sell","ticker":"{{ticker}}","price":{{close}}}')
+
+plot(ma, "200 MA", color=color.new(color.orange, 0))
+
+// Backtest honestly: check the Strategy Tester tab, then re-run on
+// out-of-sample dates before you trust any numbers.
